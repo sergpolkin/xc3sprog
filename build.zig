@@ -16,6 +16,9 @@ pub fn build(b: *std.build.Builder) void {
     exe.setBuildMode(mode);
     exe.install();
 
+    exe.linkLibC();
+    exe.linkSystemLibrary("ftdi");
+
     const run_cmd = exe.run();
     run_cmd.step.dependOn(b.getInstallStep());
     if (b.args) |args| {

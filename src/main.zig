@@ -1,10 +1,30 @@
 const std = @import("std");
+const log = std.log;
+
+pub const log_level: std.log.Level = .debug;
+
+const Bitfile = @import("bitfile.zig");
+const IO = @import("io.zig");
+const Ftdi = @import("io/ftdi.zig");
+const Jtag = @import("jtag.zig");
 
 var general_purpose_allocator = std.heap.GeneralPurposeAllocator(.{}){};
 
-const Bitfile = @import("bitfile.zig");
-
 pub fn main() anyerror!void {
+    var ftdi = Ftdi{};
+
+    var io = ftdi.getIO();
+    try io.open();
+
+    var jtag = Jtag{ .io = io };
+
+    const n = try jtag.getChain();
+    log.info("JTAG chain length: {}", .{n});
+
+    try io.close();
+}
+
+fn bitfile_main() anyerror!void {
     const alloc = general_purpose_allocator.allocator();
     defer _ = general_purpose_allocator.deinit();
 
@@ -15,10 +35,10 @@ pub fn main() anyerror!void {
     const args = try std.process.argsAlloc(arena);
 
     const bitfile_path = getBitfilePath(args) orelse {
-        std.log.err("expected bitfile path", .{});
+        log.err("expected bitfile path", .{});
         return;
     };
-    std.log.debug("bitfile_path: {s}", .{bitfile_path});
+    log.info("bitfile_path: {s}", .{bitfile_path});
 
     const bitfile_content = bitfile_content: {
         const fd = try std.fs.openFileAbsolute(bitfile_path, .{});
@@ -29,15 +49,15 @@ pub fn main() anyerror!void {
     const bitfile = try Bitfile.parse(bitfile_content);
 
     if (bitfile.ncd_filename) |ncd_filename|
-        std.log.debug("NCD filename: \"{s}\"", .{ncd_filename});
+        log.info("NCD filename: \"{s}\"", .{ncd_filename});
     if (bitfile.part_name) |part_name|
-        std.log.debug("Part name: \"{s}\"", .{part_name});
+        log.info("Part name: \"{s}\"", .{part_name});
     if (bitfile.date) |date|
-        std.log.debug("Date: \"{s}\"", .{date});
+        log.info("Date: \"{s}\"", .{date});
     if (bitfile.time) |time|
-        std.log.debug("Time: \"{s}\"", .{time});
+        log.info("Time: \"{s}\"", .{time});
     if (bitfile.payload) |payload|
-        std.log.debug("Payload length {} bytes", .{payload.len});
+        log.info("Payload length {} bytes", .{payload.len});
 }
 
 fn getBitfilePath(args: []const []const u8) ?[]const u8 {
