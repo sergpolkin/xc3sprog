@@ -1,4 +1,5 @@
 const std = @import("std");
+const log = std.log.scoped(.io);
 
 const IO = @This();
 
@@ -96,6 +97,7 @@ pub fn tmsSet(io: *IO, val: u1) Error!void {
 
 pub fn tmsFlush(io: *IO, force: bool) Error!void {
     if (io.tms_len != 0) {
+        log.debug("tms flush ({})", .{io.tms_len});
         const tmsTx = io.vtable.tmsTx;
         try tmsTx(io.ptr, io.tms_buf[0..io.tms_len], force);
     }
@@ -106,6 +108,7 @@ pub fn tmsFlush(io: *IO, force: bool) Error!void {
 pub fn shiftTDITDO(io: *IO, tdi: ?[*]const u8, tdo: ?[*]u8, length: usize, last: bool) Error!void {
     if (length == 0) return;
     try io.tmsFlush(false);
+    log.debug("xfer ({})", .{length});
     try io.vtable.xfer(io.ptr, tdi, tdo, length, last);
 }
 
@@ -121,11 +124,11 @@ pub fn shift(io: *IO, tdi: u1, length: usize, last: bool) Error!void {
     const ones   = [_]u8{0xFF} ** ChunkSize;
     const zeroes = [_]u8{0x00} ** ChunkSize;
     const block = if (tdi == 1) ones else zeroes;
-    io.tmsFlush(false);
+    try io.tmsFlush(false);
     var len: usize = length;
     while (len > ChunkSize * 8) {
-        try io.vtable.xfer(io.ptr, block, null, ChunkSize * 8, false);
+        try io.vtable.xfer(io.ptr, &block, null, ChunkSize * 8, false);
         len -= ChunkSize * 8;
     }
-    try io.shiftTDITDO(block, null, len, last);
+    try io.shiftTDITDO(&block, null, len, last);
 }

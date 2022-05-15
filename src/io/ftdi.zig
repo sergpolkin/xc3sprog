@@ -44,8 +44,8 @@ pub fn xfer(
 ) Error!void {
     const tdi_flags = if (tdi != null) c.MPSSE_DO_WRITE else 0;
     const tdo_flags = if (tdo != null) c.MPSSE_DO_READ | c.MPSSE_READ_NEG else 0;
-    var send_ptr: [*]const u8 = tdi orelse unreachable;
-    var read_ptr: [*]u8 = tdo orelse unreachable;
+    var send_ptr: [*]const u8 = tdi orelse @intToPtr([*]const u8, 0xDEADBEEF);
+    var read_ptr: [*]u8 = tdo orelse @intToPtr([*]u8, 0xDEADBEEF);
     var rem: usize = if (last) length - 1 else length;
     var buflen: usize = TX_BUF_LEN - 3;
 
@@ -106,7 +106,7 @@ pub fn xfer(
     }
     if (last) {
         var lastbit: bool = false;
-        if (tdo != null) {
+        if (tdi != null) {
             lastbit = send_ptr[0] & (@as(u8, 1) << @intCast(u3, rembits)) != 0;
         }
         var buf: [4]u8 = undefined;

@@ -13,7 +13,7 @@ const ParseError = error {
     InvalidFieldType,
 };
 
-pub fn parse(buf: []const u8) ParseError!Self {
+pub fn parse(buf: []u8, doBitReverse: bool) ParseError!Self {
     var bitfile: Self = .{};
     // Skip the header, first 13 bytes
     const HeaderLength = 13;
@@ -21,7 +21,7 @@ pub fn parse(buf: []const u8) ParseError!Self {
     var data = buf[HeaderLength..];
     parse_fields: while (true) {
         if (data.len == 0) return error.InvalidLength;
-        const field = try Field.parse(data);
+        const field = try Field.parse(data, doBitReverse);
         switch (field.typ) {
             .NCDFilename => bitfile.ncd_filename = field.data,
             .PartName => bitfile.part_name = field.data,
@@ -50,7 +50,7 @@ const Field = struct {
     typ: FieldType,
     data: []const u8,
 
-    fn parse(buf: []const u8) !Field {
+    fn parse(buf: []u8, doBitReverse: bool) !Field {
         const typ = buf[0];
         switch (typ) {
             'a' ... 'd' => {
@@ -68,6 +68,9 @@ const Field = struct {
                 const length = std.mem.readIntBig(u32, buf[1..5]);
                 const data = buf[5..];
                 if (data.len < length) return error.InvalidLength;
+                if (doBitReverse) {
+                    for (data[0..length]) |*b| { b.* = @bitReverse(u8, b.*); }
+                }
                 return Field {
                     .typ = @intToEnum(FieldType, typ),
                     .data = data[0..length],
